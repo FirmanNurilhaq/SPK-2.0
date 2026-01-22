@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\SupplierModel;
 use App\Models\SubKriteriaModel;
 use App\Libraries\AhpCalculator;
+use App\Controllers\BaseController;
 
 class SupplierController extends BaseController
 {
@@ -53,14 +54,13 @@ class SupplierController extends BaseController
     public function delete($id)
     {
         $this->supplierModel->delete($id);
-        // Hapus data terkait
-        $this->db->table('supplier_matrix')->where('supplier_baris_id', $id)->orWhere('supplier_kolom_id', $id)->delete();
+        // Hapus data bobot terkait
         $this->db->table('supplier_bobot_sub')->where('id_supplier', $id)->delete();
         
         return redirect()->to('/supplier')->with('success', 'Supplier dihapus');
     }
 
-    // --- SETUP PEMBOBOTAN SUPPLIER ---
+    // --- SETUP PEMBOBOTAN SUPPLIER (Tanpa Simpan Matrix) ---
 
     public function bobot($id_sub_kriteria)
     {
@@ -71,15 +71,8 @@ class SupplierController extends BaseController
             return redirect()->to('/supplier')->with('error', 'Minimal harus ada 2 supplier untuk dibandingkan.');
         }
 
-        // Ambil matrix
-        $matrixRaw = $this->db->table('supplier_matrix')
-            ->where('id_sub_kriteria', $id_sub_kriteria)
-            ->get()->getResultArray();
-
+        // Matrix kosong (Reset Form setiap kali buka)
         $matrix = [];
-        foreach($matrixRaw as $row){
-            $matrix[$row['supplier_baris_id']][$row['supplier_kolom_id']] = $row['nilai'];
-        }
 
         $data = [
             'sub' => $sub,
@@ -92,47 +85,31 @@ class SupplierController extends BaseController
     public function updateMatrix()
     {
         $id_sub = $this->request->getPost('id_sub_kriteria');
-        $nilai_pasangan = $this->request->getPost('nilai');
+        $nilai_pasangan = $this->request->getPost('nilai'); // Ambil input
 
-        // 1. Simpan Matrix
-        foreach ($nilai_pasangan as $id_baris => $kolom_data) {
-            foreach ($kolom_data as $id_kolom => $nilai) {
-                $where = [
-                    'id_sub_kriteria' => $id_sub,
-                    'supplier_baris_id' => $id_baris,
-                    'supplier_kolom_id' => $id_kolom
-                ];
-                
-                if ($this->db->table('supplier_matrix')->where($where)->countAllResults() > 0) {
-                    $this->db->table('supplier_matrix')->where($where)->update(['nilai' => $nilai]);
-                } else {
-                    $this->db->table('supplier_matrix')->insert(array_merge($where, ['nilai' => $nilai]));
-                }
-            }
-        }
-
-        // 2. Hitung Bobot Supplier untuk Sub Kriteria ini
+        // 1. Siapkan Item Supplier
         $suppliers = $this->supplierModel->findAll();
         $items = [];
         foreach($suppliers as $s) $items[] = ['id' => $s['id_supplier']];
 
+        // 2. Hitung Bobot Langsung (On-the-Fly)
         $bobotSupplier = $this->ahp->hitungBobot($nilai_pasangan, $items);
 
-        // 3. Simpan Bobot ke tabel supplier_bobot_sub
+        // 3. Simpan Hasil Bobot ke tabel 'supplier_bobot_sub'
+        // Ini WAJIB disimpan karena akan dipakai saat Pemesanan
+        
+        // Bersihkan dulu bobot lama untuk sub kriteria ini agar tidak duplikat
+        $this->db->table('supplier_bobot_sub')->where('id_sub_kriteria', $id_sub)->delete();
+
+        // Insert bobot baru
         foreach ($bobotSupplier as $id_supplier => $bobot) {
-            $where = ['id_supplier' => $id_supplier, 'id_sub_kriteria' => $id_sub];
-            
-            if ($this->db->table('supplier_bobot_sub')->where($where)->countAllResults() > 0) {
-                $this->db->table('supplier_bobot_sub')->where($where)->update(['bobot' => $bobot]);
-            } else {
-                $this->db->table('supplier_bobot_sub')->insert([
-                    'id_supplier' => $id_supplier,
-                    'id_sub_kriteria' => $id_sub,
-                    'bobot' => $bobot
-                ]);
-            }
+            $this->db->table('supplier_bobot_sub')->insert([
+                'id_supplier' => $id_supplier,
+                'id_sub_kriteria' => $id_sub,
+                'bobot' => $bobot
+            ]);
         }
 
-        return redirect()->to('/supplier')->with('success', 'Bobot Supplier untuk kriteria ini berhasil diupdate.');
+        return redirect()->to('/supplier')->with('success', 'Penilaian Supplier berhasil disimpan!');
     }
 }

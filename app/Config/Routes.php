@@ -6,50 +6,64 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 
-// Dashboard Utama
 $routes->get('/', 'Home::index');
 
-// =================================================
-// 1. MODULE KRITERIA & SUB KRITERIA
-// =================================================
-$routes->group('kriteria', function($routes) {
-    // --- Kriteria Utama (Parent) ---
-    $routes->get('/', 'KriteriaController::index');                  // List Kriteria
-    $routes->post('store', 'KriteriaController::store');             // Simpan Kriteria Baru
-    $routes->get('delete/(:num)', 'KriteriaController::delete/$1');  // Hapus Kriteria
+// ==========================================================
+// 1. MASTER DATA (Kriteria, Sub Kriteria, Supplier)
+// Hanya input nama/kode, tanpa bobot.
+// ==========================================================
+$routes->group('master', function($routes) {
+    // Kriteria
+    $routes->get('kriteria', 'MasterController::kriteria');
+    $routes->post('kriteria/store', 'MasterController::storeKriteria');
+    $routes->get('kriteria/delete/(:num)', 'MasterController::deleteKriteria/$1');
     
-    // Pembobotan Kriteria Utama (Pairwise Comparison)
-    $routes->get('prioritas', 'KriteriaController::prioritas');      // View Matriks
-    $routes->post('update-matrix', 'KriteriaController::updateMatrix'); // Proses Hitung AHP
-    
-    // --- Sub Kriteria (Child) ---
-    $routes->get('detail/(:num)', 'KriteriaController::detail/$1');  // Lihat List Sub Kriteria dari Parent tertentu
-    $routes->post('sub/store', 'KriteriaController::storeSub');      // Simpan Sub Kriteria Baru
-    
-    // Pembobotan Sub Kriteria (Pairwise Comparison)
-    $routes->get('sub/prioritas/(:num)', 'KriteriaController::prioritasSub/$1'); // View Matriks Sub
-    $routes->post('sub/update-matrix', 'KriteriaController::updateMatrixSub');   // Proses Hitung AHP Sub
+    // Sub Kriteria
+    $routes->get('sub/(:num)', 'MasterController::subKriteria/$1'); // parameter id_kriteria
+    $routes->post('sub/store', 'MasterController::storeSub');
+    $routes->get('sub/delete/(:num)', 'MasterController::deleteSub/$1');
+
+    // Supplier
+    $routes->get('supplier', 'MasterController::supplier');
+    $routes->post('supplier/store', 'MasterController::storeSupplier');
+    $routes->get('supplier/delete/(:num)', 'MasterController::deleteSupplier/$1');
 });
 
-// =================================================
-// 2. MODULE SUPPLIER
-// =================================================
-$routes->group('supplier', function($routes) {
-    $routes->get('/', 'SupplierController::index');                  // List Supplier
-    $routes->post('store', 'SupplierController::store');             // Simpan Supplier Baru
-    $routes->get('delete/(:num)', 'SupplierController::delete/$1');  // Hapus Supplier
-    
-    // Pembobotan Supplier (Bandingkan Supplier A vs B berdasarkan Sub Kriteria X)
-    $routes->get('bobot/(:num)', 'SupplierController::bobot/$1');    // View Matriks Supplier (parameter: id_sub_kriteria)
-    $routes->post('update-matrix', 'SupplierController::updateMatrix'); // Proses Hitung Skor Supplier
+// ==========================================================
+// 2. JENIS BAHAN & SETUP AHP (INTI SISTEM)
+// Di sini user input Bahan & Melakukan Pembobotan per Bahan
+// ==========================================================
+$routes->group('jenis-bahan', function($routes) {
+    $routes->get('/', 'JenisBahanController::index');           // List Jenis Bahan
+    $routes->post('store', 'JenisBahanController::store');      // Tambah Bahan Baru
+    $routes->get('delete/(:num)', 'JenisBahanController::delete/$1');
+
+    // --- MENU SETUP AHP PER BAHAN ---
+    // Dashboard Setup untuk 1 Bahan Tertentu
+    $routes->get('setup/(:num)', 'JenisBahanController::setup/$1'); 
+
+    // A. Setup Bobot Kriteria (Khusus Bahan ini)
+    $routes->get('setup-kriteria/(:num)', 'JenisBahanController::setupKriteria/$1');
+    $routes->post('save-kriteria', 'JenisBahanController::saveKriteria');
+
+    // B. Setup Bobot Sub Kriteria (Khusus Bahan ini)
+    $routes->get('setup-sub/(:num)/(:num)', 'JenisBahanController::setupSub/$1/$2'); // id_bahan, id_kriteria_parent
+    $routes->post('save-sub', 'JenisBahanController::saveSub');
+
+    // C. Setup Nilai Supplier (Khusus Bahan ini)
+    $routes->get('setup-supplier/(:num)/(:num)', 'JenisBahanController::setupSupplier/$1/$2'); // id_bahan, id_sub_kriteria
+    $routes->post('save-supplier', 'JenisBahanController::saveSupplier');
 });
 
-// =================================================
-// 3. MODULE PEMESANAN (TRANSAKSI)
-// =================================================
+// ==========================================================
+// 3. PEMESANAN (TRANSAKSI)
+// ==========================================================
 $routes->group('pemesanan', function($routes) {
-    $routes->get('/', 'PemesananController::index');                 // List History Pesanan
-    $routes->get('create', 'PemesananController::create');           // Form Order & Leaderboard AHP Live
-    $routes->post('store', 'PemesananController::store');            // Proses Simpan Order & Snapshot History
-    $routes->get('detail/(:num)', 'PemesananController::detail/$1'); // Lihat Detail & Snapshot Ranking saat itu
+    $routes->get('/', 'PemesananController::index');
+    $routes->get('create', 'PemesananController::create');
+    $routes->post('store', 'PemesananController::store');
+    $routes->get('detail/(:num)', 'PemesananController::detail/$1');
+
+    // API untuk mengambil leaderboard saat dropdown bahan dipilih
+    $routes->get('get-leaderboard/(:num)', 'PemesananController::getLeaderboard/$1'); // id_jenis_bahan
 });

@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
-        .active-nav { background-color: #1f2937; color: white; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -31,25 +30,25 @@
                            Dashboard
                         </a>
                         
-                        <a href="<?= base_url('kriteria') ?>" 
-                           class="py-4 px-2 text-gray-500 font-semibold hover:text-indigo-500 transition duration-300 <?= ($uri->getSegment(1) == 'kriteria') ? 'text-indigo-500 border-b-4 border-indigo-500' : '' ?>">
-                           Data Kriteria (Setup)
-                        </a>
+                        <div class="relative group">
+                            <button class="py-4 px-2 text-gray-500 font-semibold hover:text-indigo-500 transition duration-300 flex items-center">
+                                Master Data <i class="fa-solid fa-chevron-down ml-1 text-xs"></i>
+                            </button>
+                            <div class="absolute hidden group-hover:block bg-white shadow-lg rounded mt-0 w-48 z-10 border">
+                                <a href="<?= base_url('master/kriteria') ?>" class="block px-4 py-2 text-gray-700 hover:bg-indigo-50">Data Kriteria</a>
+                                <a href="<?= base_url('master/supplier') ?>" class="block px-4 py-2 text-gray-700 hover:bg-indigo-50">Data Supplier</a>
+                            </div>
+                        </div>
 
-                        <a href="<?= base_url('supplier') ?>" 
-                           class="py-4 px-2 text-gray-500 font-semibold hover:text-indigo-500 transition duration-300 <?= ($uri->getSegment(1) == 'supplier') ? 'text-indigo-500 border-b-4 border-indigo-500' : '' ?>">
-                           Data Supplier (Setup)
+                        <a href="<?= base_url('jenis-bahan') ?>" 
+                           class="py-4 px-2 text-gray-500 font-semibold hover:text-indigo-500 transition duration-300 <?= ($uri->getSegment(1) == 'jenis-bahan') ? 'text-indigo-500 border-b-4 border-indigo-500' : '' ?>">
+                           Jenis Bahan (AHP)
                         </a>
 
                         <a href="<?= base_url('pemesanan') ?>" 
                            class="py-4 px-2 text-gray-500 font-semibold hover:text-indigo-500 transition duration-300 <?= ($uri->getSegment(1) == 'pemesanan') ? 'text-indigo-500 border-b-4 border-indigo-500' : '' ?>">
-                           Pemesanan & History
+                           Pemesanan
                         </a>
-                    </div>
-                </div>
-                <div class="hidden md:flex items-center space-x-3 ">
-                    <div class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-gray-100 transition duration-300">
-                        <i class="fa-solid fa-user-tie mr-1"></i> Bagian Pengadaan
                     </div>
                 </div>
             </div>

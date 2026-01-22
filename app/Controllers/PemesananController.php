@@ -2,118 +2,73 @@
 
 namespace App\Controllers;
 
+use App\Controllers\BaseController;
 use App\Models\PesananModel;
+use App\Models\JenisBahanModel;
 use App\Models\SupplierModel;
-use App\Models\SubKriteriaModel;
+use App\Models\NilaiSubBahanModel;
+use App\Models\NilaiSupplierBahanModel;
 
 class PemesananController extends BaseController
 {
     protected $pesananModel;
+    protected $jenisBahanModel;
     protected $supplierModel;
-    protected $subKriteriaModel;
+    protected $nilaiSubBahanModel;
+    protected $nilaiSupplierBahanModel;
     protected $db;
 
     public function __construct()
     {
         $this->pesananModel = new PesananModel();
+        $this->jenisBahanModel = new JenisBahanModel();
         $this->supplierModel = new SupplierModel();
-        $this->subKriteriaModel = new SubKriteriaModel();
+        $this->nilaiSubBahanModel = new NilaiSubBahanModel();
+        $this->nilaiSupplierBahanModel = new NilaiSupplierBahanModel();
         $this->db = \Config\Database::connect();
     }
 
     public function index()
     {
-        $data = [
-            'history' => $this->pesananModel->getHistoryLengkap()
-        ];
+        $data = ['history' => $this->pesananModel->getHistory()];
         return view('pemesanan/index', $data);
     }
 
     public function create()
     {
-        // 1. Hitung Live AHP Leaderboard
-        $leaderboard = $this->hitungLeaderboardSaatIni();
-
-        $data = [
-            'leaderboard' => $leaderboard
-        ];
+        $data = ['bahan_list' => $this->jenisBahanModel->findAll()];
         return view('pemesanan/create', $data);
     }
 
-    public function store()
-    {
-        // 1. Simpan Transaksi Pesanan
-        $dataPesanan = [
-            'jumlah_lusin' => $this->request->getPost('jumlah_lusin'),
-            'bahan_baku' => $this->request->getPost('bahan_baku'),
-            'catatan' => $this->request->getPost('catatan'),
-            'id_supplier_terpilih' => $this->request->getPost('id_supplier_terpilih'), // User memilih berdasarkan rekomendasi
-            'tanggal' => date('Y-m-d H:i:s')
-        ];
-        
-        $this->pesananModel->insert($dataPesanan);
-        $id_pesanan = $this->pesananModel->getInsertID();
-
-        // 2. Simpan Snapshot Leaderboard ke History (Agar data abadi)
-        $leaderboard = $this->hitungLeaderboardSaatIni(); // Hitung ulang untuk memastikan data paling baru
-        
-        foreach ($leaderboard as $rank => $row) {
-            $this->db->table('pesanan_ahp_history')->insert([
-                'id_pesanan' => $id_pesanan,
-                'id_supplier' => $row['id_supplier'],
-                'skor_ahp' => $row['skor_akhir'],
-                'ranking' => $rank + 1
-            ]);
-        }
-
-        return redirect()->to('/pemesanan')->with('success', 'Pesanan berhasil dibuat dan history AHP tersimpan.');
-    }
-
-    public function detail($id)
-    {
-        // Ambil Data Pesanan
-        $pesanan = $this->pesananModel->getHistoryLengkap($id);
-        
-        // Ambil Snapshot History (BUKAN hitung ulang)
-        $history = $this->db->table('pesanan_ahp_history')
-            ->select('pesanan_ahp_history.*, supplier.nama as nama_supplier')
-            ->join('supplier', 'supplier.id_supplier = pesanan_ahp_history.id_supplier')
-            ->where('id_pesanan', $id)
-            ->orderBy('ranking', 'ASC')
-            ->get()->getResultArray();
-
-        $data = [
-            'pesanan' => $pesanan,
-            'history' => $history
-        ];
-        return view('pemesanan/detail', $data);
-    }
-
-    // --- LOGIKA INTI PENJUMLAHAN BOBOT AHP ---
-    private function hitungLeaderboardSaatIni()
+    // API: Dipanggil via AJAX saat user pilih bahan di form
+    public function getLeaderboard($id_bahan)
     {
         $suppliers = $this->supplierModel->findAll();
-        $subs = $this->subKriteriaModel->findAll();
         $leaderboard = [];
+
+        // Ambil semua sub kriteria yang punya bobot global di bahan ini
+        $subsBobot = $this->nilaiSubBahanModel->getBobotByBahan($id_bahan);
+        
+        // Mapping Bobot Global Sub: [id_sub => 0.xxx]
+        $mapBobotSub = [];
+        foreach($subsBobot as $sb) {
+            $mapBobotSub[$sb['id_sub_kriteria']] = $sb['nilai_bobot_global'];
+        }
 
         foreach ($suppliers as $s) {
             $totalSkor = 0;
-            
-            // Loop setiap sub kriteria
-            foreach ($subs as $sub) {
-                // Ambil bobot global sub kriteria (Wj)
-                $bobotGlobalSub = $sub['bobot_global'];
+            // Ambil skor supplier ini untuk bahan ini
+            $skorData = $this->nilaiSupplierBahanModel
+                ->where('id_jenis_bahan', $id_bahan)
+                ->where('id_supplier', $s['id_supplier'])
+                ->findAll();
 
-                // Ambil bobot supplier terhadap sub ini (Sij)
-                $query = $this->db->table('supplier_bobot_sub')
-                    ->where('id_supplier', $s['id_supplier'])
-                    ->where('id_sub_kriteria', $sub['id_sub_kriteria'])
-                    ->get()->getRowArray();
-                
-                $bobotSupplier = $query ? $query['bobot'] : 0;
-
-                // Rumus: Skor = Sum(BobotGlobalSub * BobotSupplier)
-                $totalSkor += ($bobotGlobalSub * $bobotSupplier);
+            // Hitung SAW (Simple Additive Weighting) dari hasil AHP
+            foreach($skorData as $sd) {
+                if(isset($mapBobotSub[$sd['id_sub_kriteria']])) {
+                    $globalWeight = $mapBobotSub[$sd['id_sub_kriteria']];
+                    $totalSkor += ($globalWeight * $sd['nilai_skor']);
+                }
             }
 
             $leaderboard[] = [
@@ -123,11 +78,59 @@ class PemesananController extends BaseController
             ];
         }
 
-        // Urutkan dari skor tertinggi (Descending)
+        // Urutkan Descending
         usort($leaderboard, function ($a, $b) {
             return $b['skor_akhir'] <=> $a['skor_akhir'];
         });
 
-        return $leaderboard;
+        return $this->response->setJSON($leaderboard);
+    }
+
+    public function store()
+    {
+        $id_bahan = $this->request->getPost('id_jenis_bahan');
+        
+        // Simpan Pesanan
+        $this->pesananModel->insert([
+            'id_jenis_bahan' => $id_bahan,
+            'jumlah_lusin' => $this->request->getPost('jumlah_lusin'),
+            'id_supplier' => $this->request->getPost('id_supplier'),
+            'catatan' => $this->request->getPost('catatan'),
+            'tanggal' => date('Y-m-d H:i:s')
+        ]);
+        $id_pesanan = $this->pesananModel->getInsertID();
+
+        // Simpan Snapshot Leaderboard (Panggil fungsi hitung manual)
+        // Kita hitung ulang di sini untuk disimpan ke history
+        $leaderboardJSON = $this->getLeaderboard($id_bahan)->getBody();
+        $leaderboard = json_decode($leaderboardJSON, true);
+
+        foreach($leaderboard as $rank => $row) {
+            $this->db->table('pesanan_history_ahp')->insert([
+                'id_pesanan' => $id_pesanan,
+                'id_supplier' => $row['id_supplier'],
+                'skor_ahp' => $row['skor_akhir'],
+                'ranking' => $rank + 1
+            ]);
+        }
+
+        return redirect()->to('/pemesanan')->with('success', 'Pesanan berhasil dibuat!');
+    }
+
+    public function detail($id)
+    {
+        $pesananModel = new \App\Models\PesananModel(); // Load ulang agar fungsi getHistory jalan
+        // Custom query karena getHistory() return array all
+        $pesanan = $this->db->table('pesanan')
+            ->select('pesanan.*, supplier.nama as nama_supplier, jenis_bahan.nama_bahan')
+            ->join('supplier', 'supplier.id_supplier = pesanan.id_supplier')
+            ->join('jenis_bahan', 'jenis_bahan.id_jenis_bahan = pesanan.id_jenis_bahan')
+            ->where('id_pesanan', $id)
+            ->get()->getRowArray();
+            
+        $historyModel = new \App\Models\PesananHistoryAhpModel();
+        $history = $historyModel->getSnapshot($id);
+
+        return view('pemesanan/detail', ['pesanan' => $pesanan, 'history' => $history]);
     }
 }
