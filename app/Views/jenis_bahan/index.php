@@ -45,14 +45,20 @@
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <h3 class="text-lg font-bold mb-4">Tambah Jenis Bahan</h3>
         <form action="<?= base_url('jenis-bahan/store') ?>" method="post">
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Nama Bahan</label>
-                <input type="text" name="nama_bahan" class="w-full border rounded px-3 py-2" required placeholder="Contoh: Polyester">
-            </div>
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Keterangan</label>
-                <textarea name="keterangan" class="w-full border rounded px-3 py-2"></textarea>
-            </div>
+        <div class="mb-4">
+    <label class="block text-gray-700 text-sm font-bold mb-2">Nama Bahan</label>
+    <input type="text" name="nama_bahan" class="w-full border rounded px-3 py-2" required>
+</div>
+
+<div class="mb-4">
+    <label class="block text-gray-700 text-sm font-bold mb-2">Harga Per Lusin (Rp)</label>
+    <input type="number" name="harga" class="w-full border rounded px-3 py-2" required placeholder="Contoh: 50000">
+</div>
+
+<div class="mb-4">
+    <label class="block text-gray-700 text-sm font-bold mb-2">Keterangan</label>
+    <textarea name="keterangan" class="w-full border rounded px-3 py-2"></textarea>
+</div>
             <div class="flex justify-end">
                 <button type="button" onclick="document.getElementById('modalAdd').classList.add('hidden')" class="mr-2 text-gray-500 hover:text-gray-700">Batal</button>
                 <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Simpan</button>

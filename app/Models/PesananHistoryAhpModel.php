@@ -13,6 +13,7 @@ class PesananHistoryAhpModel extends Model
     protected $allowedFields    = ['id_pesanan', 'id_supplier', 'skor_ahp', 'ranking'];
 
     // Helper untuk mengambil snapshot history beserta nama supplier
+    // Dipakai saat menampilkan detail pesanan yang sudah selesai
     public function getSnapshot($id_pesanan)
     {
         return $this->select('pesanan_history_ahp.*, supplier.nama as nama_supplier')

@@ -36,6 +36,7 @@ class JenisBahanController extends BaseController
     {
         $this->jenisBahanModel->save([
             'nama_bahan' => $this->request->getPost('nama_bahan'),
+            'harga'      => $this->request->getPost('harga'), // <--- Tambah ini
             'keterangan' => $this->request->getPost('keterangan')
         ]);
         return redirect()->to('/jenis-bahan')->with('success', 'Data Bahan disimpan.');

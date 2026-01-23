@@ -6,19 +6,60 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 
-$routes->get('/', 'Home::index');
+// =========================================================================
+// 1. PUBLIC ROUTES (LOGIN & LOGOUT)
+// =========================================================================
+$routes->get('/', 'AuthController::login');
+$routes->get('login', 'AuthController::login');
+$routes->post('auth/process', 'AuthController::process');
+$routes->get('logout', 'AuthController::logout');
 
-// ==========================================================
-// 1. MASTER DATA & BOBOT GLOBAL
-// CRUD Data + Pembobotan Kriteria & Sub (Sekali Input)
-// ==========================================================
-$routes->group('master', function($routes) {
+
+// =========================================================================
+// 2. GROUP: BAGIAN PEMESANAN (SALES)
+// Hak Akses: Input Data Pembeli & Membuat Pesanan Baru
+// =========================================================================
+$routes->group('pemesanan', ['filter' => 'auth'], function($routes) {
+    // Dashboard Sales (History Pesanan)
+    $routes->get('/', 'PemesananController::index'); 
+    
+    // Kelola Data Pembeli (CRUD Sederhana)
+    $routes->get('pembeli', 'PemesananController::pembeli');
+    $routes->post('pembeli/store', 'PemesananController::storePembeli');
+    
+    // Input Pesanan Baru
+    $routes->get('create', 'PemesananController::create');
+    $routes->post('store', 'PemesananController::store');
+});
+
+
+// =========================================================================
+// 3. GROUP: BAGIAN PENGADAAN (GUDANG / ADMIN AHP)
+// Hak Akses: Proses AHP & Pilih Supplier
+// =========================================================================
+$routes->group('pengadaan', ['filter' => 'auth'], function($routes) {
+    // Dashboard Pending (Daftar Pesanan Masuk)
+    $routes->get('/', 'PengadaanController::index');
+    
+    // --- PROSES SELEKSI SUPPLIER (AHP) ---
+    $routes->get('proses/(:num)', 'PengadaanController::proses/$1'); // Halaman Proses per Pesanan
+    $routes->get('get-leaderboard/(:num)', 'PengadaanController::getLeaderboard/$1'); // API JSON untuk JS
+    $routes->post('selesai', 'PengadaanController::selesai'); // Simpan Keputusan Akhir
+});
+
+
+// =========================================================================
+// 4. GROUP: MASTER DATA (GLOBAL / ADMIN)
+// Perbaikan: Dikeluarkan dari grup 'pengadaan' agar URL sesuai Navbar
+// URL: localhost:8080/master/kriteria
+// =========================================================================
+$routes->group('master', ['filter' => 'auth'], function($routes) {
     // --- Kriteria ---
     $routes->get('kriteria', 'MasterController::kriteria');
     $routes->post('kriteria/store', 'MasterController::storeKriteria');
     $routes->get('kriteria/delete/(:num)', 'MasterController::deleteKriteria/$1');
     
-    // Fitur Baru: Hitung Bobot Global Kriteria
+    // Hitung Bobot Kriteria
     $routes->get('kriteria/prioritas', 'MasterController::prioritasKriteria'); 
     $routes->post('kriteria/save-prioritas', 'MasterController::savePrioritasKriteria');
 
@@ -26,9 +67,9 @@ $routes->group('master', function($routes) {
     $routes->get('sub/(:num)', 'MasterController::subKriteria/$1');
     $routes->post('sub/store', 'MasterController::storeSub');
     $routes->get('sub/delete/(:num)', 'MasterController::deleteSub/$1');
-
-    // Fitur Baru: Hitung Bobot Global Sub Kriteria
-    $routes->get('sub/prioritas/(:num)', 'MasterController::prioritasSub/$1');
+    
+    // Hitung Bobot Sub
+    $routes->get('sub/prioritas/(:num)', 'MasterController::prioritasSub/$1'); 
     $routes->post('sub/save-prioritas', 'MasterController::savePrioritasSub');
 
     // --- Supplier ---
@@ -37,31 +78,18 @@ $routes->group('master', function($routes) {
     $routes->get('supplier/delete/(:num)', 'MasterController::deleteSupplier/$1');
 });
 
-// ==========================================================
-// 2. JENIS BAHAN & PENILAIAN SUPPLIER (DINAMIS)
-// User memilih bahan, lalu menilai supplier KHUSUS bahan itu.
-// ==========================================================
-$routes->group('jenis-bahan', function($routes) {
+
+// =========================================================================
+// 5. GROUP: JENIS BAHAN & PENILAIAN KINERJA SUPPLIER
+// URL: localhost:8080/jenis-bahan
+// =========================================================================
+$routes->group('jenis-bahan', ['filter' => 'auth'], function($routes) {
     $routes->get('/', 'JenisBahanController::index');
     $routes->post('store', 'JenisBahanController::store');
     $routes->get('delete/(:num)', 'JenisBahanController::delete/$1');
 
-    // Dashboard Setup untuk 1 Bahan
+    // Setup Nilai Kinerja Supplier (Skor Lokal)
     $routes->get('setup/(:num)', 'JenisBahanController::setup/$1'); 
-
-    // HANYA ADA SETUP SUPPLIER (Kriteria & Sub ikut Master)
-    $routes->get('setup-supplier/(:num)/(:num)', 'JenisBahanController::setupSupplier/$1/$2'); // id_bahan, id_sub
+    $routes->get('setup-supplier/(:num)/(:num)', 'JenisBahanController::setupSupplier/$1/$2'); 
     $routes->post('save-supplier', 'JenisBahanController::saveSupplier');
-});
-
-// ==========================================================
-// 3. PEMESANAN (TRANSAKSI)
-// ==========================================================
-$routes->group('pemesanan', function($routes) {
-    $routes->get('/', 'PemesananController::index');
-    $routes->get('create', 'PemesananController::create');
-    $routes->post('store', 'PemesananController::store');
-    $routes->get('detail/(:num)', 'PemesananController::detail/$1');
-    $routes->get('get-leaderboard/(:num)', 'PemesananController::getLeaderboard/$1');
-    $routes->get('debug/(:num)', 'PemesananController::debug/$1'); // <--- Tambah ini
 });
