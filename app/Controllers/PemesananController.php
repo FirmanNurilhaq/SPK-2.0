@@ -6,16 +6,18 @@ use App\Controllers\BaseController;
 use App\Models\PesananModel;
 use App\Models\JenisBahanModel;
 use App\Models\SupplierModel;
-use App\Models\NilaiSubBahanModel;
-use App\Models\NilaiSupplierBahanModel;
+use App\Models\SubKriteriaModel; // Pakai ini untuk bobot global
+use App\Models\NilaiSupplierBahanModel; // Pakai ini untuk skor supplier dinamis
+use App\Models\PesananHistoryAhpModel;
 
 class PemesananController extends BaseController
 {
     protected $pesananModel;
     protected $jenisBahanModel;
     protected $supplierModel;
-    protected $nilaiSubBahanModel;
+    protected $subKriteriaModel;
     protected $nilaiSupplierBahanModel;
+    protected $pesananHistoryAhpModel;
     protected $db;
 
     public function __construct()
@@ -23,8 +25,9 @@ class PemesananController extends BaseController
         $this->pesananModel = new PesananModel();
         $this->jenisBahanModel = new JenisBahanModel();
         $this->supplierModel = new SupplierModel();
-        $this->nilaiSubBahanModel = new NilaiSubBahanModel();
+        $this->subKriteriaModel = new SubKriteriaModel();
         $this->nilaiSupplierBahanModel = new NilaiSupplierBahanModel();
+        $this->pesananHistoryAhpModel = new PesananHistoryAhpModel();
         $this->db = \Config\Database::connect();
     }
 
@@ -40,77 +43,98 @@ class PemesananController extends BaseController
         return view('pemesanan/create', $data);
     }
 
-    // API: Dipanggil via AJAX saat user pilih bahan di form
-    public function getLeaderboard($id_bahan)
+    // --- LOGIC INTI PERHITUNGAN AHP (SAW) ---
+    // Dipisahkan jadi fungsi private agar bisa dipanggil oleh AJAX maupun saat Save Pesanan
+    private function hitungRekomendasi($id_bahan)
     {
         $suppliers = $this->supplierModel->findAll();
         $leaderboard = [];
 
-        // Ambil semua sub kriteria yang punya bobot global di bahan ini
-        $subsBobot = $this->nilaiSubBahanModel->getBobotByBahan($id_bahan);
+        // 1. Ambil Bobot Global Sub Kriteria dari MASTER (Static)
+        // Pastikan kolom 'bobot_global' ada di tabel sub_kriteria
+        $allSubs = $this->subKriteriaModel->findAll();
         
-        // Mapping Bobot Global Sub: [id_sub => 0.xxx]
-        $mapBobotSub = [];
-        foreach($subsBobot as $sb) {
-            $mapBobotSub[$sb['id_sub_kriteria']] = $sb['nilai_bobot_global'];
+        // 2. Ambil Skor Supplier untuk Bahan ini (Dynamic)
+        $skorData = $this->nilaiSupplierBahanModel
+            ->where('id_jenis_bahan', $id_bahan)
+            ->findAll();
+
+        // Mapping Skor Supplier biar mudah diakses: [id_supplier][id_sub] => nilai
+        $mapSkor = [];
+        foreach($skorData as $sd) {
+            $mapSkor[$sd['id_supplier']][$sd['id_sub_kriteria']] = $sd['nilai_skor'];
         }
 
+        // 3. Hitung Total SAW (Simple Additive Weighting)
         foreach ($suppliers as $s) {
             $totalSkor = 0;
-            // Ambil skor supplier ini untuk bahan ini
-            $skorData = $this->nilaiSupplierBahanModel
-                ->where('id_jenis_bahan', $id_bahan)
-                ->where('id_supplier', $s['id_supplier'])
-                ->findAll();
+            $id_sup = $s['id_supplier'];
 
-            // Hitung SAW (Simple Additive Weighting) dari hasil AHP
-            foreach($skorData as $sd) {
-                if(isset($mapBobotSub[$sd['id_sub_kriteria']])) {
-                    $globalWeight = $mapBobotSub[$sd['id_sub_kriteria']];
-                    $totalSkor += ($globalWeight * $sd['nilai_skor']);
-                }
+            foreach($allSubs as $sub) {
+                // Rumus: Bobot Global Sub (Master) * Skor Supplier (Lokal Bahan)
+                $bobotGlobal = $sub['bobot_global']; 
+                
+                // Jika supplier belum dinilai di sub ini, anggap nilai 0 (atau bisa dihandle lain)
+                $skor = isset($mapSkor[$id_sup][$sub['id_sub_kriteria']]) ? $mapSkor[$id_sup][$sub['id_sub_kriteria']] : 0;
+                
+                $totalSkor += ($bobotGlobal * $skor);
             }
 
             $leaderboard[] = [
-                'id_supplier' => $s['id_supplier'],
+                'id_supplier' => $id_sup,
                 'nama' => $s['nama'],
                 'skor_akhir' => $totalSkor
             ];
         }
 
-        // Urutkan Descending
+        // Urutkan dari skor tertinggi ke terendah
         usort($leaderboard, function ($a, $b) {
             return $b['skor_akhir'] <=> $a['skor_akhir'];
         });
 
-        return $this->response->setJSON($leaderboard);
+        return $leaderboard;
+    }
+
+    // API: Dipanggil via AJAX saat user pilih bahan di dropdown
+    public function getLeaderboard($id_bahan)
+    {
+        try {
+            $leaderboard = $this->hitungRekomendasi($id_bahan);
+            return $this->response->setJSON($leaderboard);
+        } catch (\Exception $e) {
+            // Tangkap error biar ketahuan di console network tab
+            return $this->response->setStatusCode(500)->setJSON(['error' => $e->getMessage()]);
+        }
     }
 
     public function store()
     {
         $id_bahan = $this->request->getPost('id_jenis_bahan');
         
-        // Simpan Pesanan
-        $this->pesananModel->insert([
+        // 1. Simpan Data Pesanan Utama
+        $this->pesananModel->save([
             'id_jenis_bahan' => $id_bahan,
             'jumlah_lusin' => $this->request->getPost('jumlah_lusin'),
-            'id_supplier' => $this->request->getPost('id_supplier'),
+            'id_supplier' => $this->request->getPost('id_supplier'), // Supplier yang dipilih user (bisa jadi bukan ranking 1)
             'catatan' => $this->request->getPost('catatan'),
             'tanggal' => date('Y-m-d H:i:s')
         ]);
+        
         $id_pesanan = $this->pesananModel->getInsertID();
 
-        // Simpan Snapshot Leaderboard (Panggil fungsi hitung manual)
-        // Kita hitung ulang di sini untuk disimpan ke history
-        $leaderboardJSON = $this->getLeaderboard($id_bahan)->getBody();
-        $leaderboard = json_decode($leaderboardJSON, true);
+        // 2. Simpan Snapshot Leaderboard (History AHP)
+        // Kita hitung ulang saat itu juga untuk disimpan sebagai bukti sejarah
+        $leaderboard = $this->hitungRekomendasi($id_bahan);
 
         foreach($leaderboard as $rank => $row) {
-            $this->db->table('pesanan_history_ahp')->insert([
+            // Index array mulai dari 0, jadi ranking = index + 1
+            $ranking = $rank + 1;
+            
+            $this->pesananHistoryAhpModel->save([
                 'id_pesanan' => $id_pesanan,
                 'id_supplier' => $row['id_supplier'],
                 'skor_ahp' => $row['skor_akhir'],
-                'ranking' => $rank + 1
+                'ranking' => $ranking
             ]);
         }
 
@@ -119,8 +143,7 @@ class PemesananController extends BaseController
 
     public function detail($id)
     {
-        $pesananModel = new \App\Models\PesananModel(); // Load ulang agar fungsi getHistory jalan
-        // Custom query karena getHistory() return array all
+        // Custom query karena kita butuh join lengkap
         $pesanan = $this->db->table('pesanan')
             ->select('pesanan.*, supplier.nama as nama_supplier, jenis_bahan.nama_bahan')
             ->join('supplier', 'supplier.id_supplier = pesanan.id_supplier')
@@ -128,9 +151,70 @@ class PemesananController extends BaseController
             ->where('id_pesanan', $id)
             ->get()->getRowArray();
             
-        $historyModel = new \App\Models\PesananHistoryAhpModel();
-        $history = $historyModel->getSnapshot($id);
+        // Ambil history ranking pada saat pesanan itu dibuat
+        $history = $this->pesananHistoryAhpModel->getSnapshot($id);
 
         return view('pemesanan/detail', ['pesanan' => $pesanan, 'history' => $history]);
+    }
+
+    public function debug($id_bahan)
+    {
+        $suppliers = $this->supplierModel->findAll();
+        $allSubs = $this->subKriteriaModel->findAll();
+        
+        // Ambil Skor dari Database
+        $skorData = $this->nilaiSupplierBahanModel
+            ->where('id_jenis_bahan', $id_bahan)
+            ->findAll();
+
+        // Mapping Data Skor
+        $mapSkor = [];
+        foreach($skorData as $sd) {
+            $mapSkor[$sd['id_supplier']][$sd['id_sub_kriteria']] = $sd['nilai_skor'];
+        }
+
+        echo "<h1>Audit Perhitungan AHP (Debug Mode)</h1>";
+        echo "<p>Bandingkan angka di bawah ini dengan Excel Anda.</p>";
+        echo "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse; font-family: sans-serif; font-size: 12px;'>";
+        
+        // Header (Nama Sub Kriteria + Bobot Global)
+        echo "<tr style='background: #eee;'>";
+        echo "<th>Supplier</th>";
+        foreach($allSubs as $sub) {
+            echo "<th style='text-align:center;'>";
+            echo $sub['nama'] . "<br>";
+            echo "<span style='color:blue;'>Bobot: " . number_format($sub['bobot_global'], 4) . "</span>";
+            echo "</th>";
+        }
+        echo "<th>TOTAL SKOR</th>";
+        echo "</tr>";
+
+        // Body (Nilai Per Supplier)
+        foreach ($suppliers as $s) {
+            $totalSkor = 0;
+            $id_sup = $s['id_supplier'];
+
+            echo "<tr>";
+            echo "<td><strong>" . $s['nama'] . "</strong></td>";
+
+            foreach($allSubs as $sub) {
+                $bobotGlobal = $sub['bobot_global']; 
+                $skor = isset($mapSkor[$id_sup][$sub['id_sub_kriteria']]) ? $mapSkor[$id_sup][$sub['id_sub_kriteria']] : 0;
+                
+                $hasilKali = $bobotGlobal * $skor;
+                $totalSkor += $hasilKali;
+
+                // Tampilkan sel perhitungan: (Bobot x Skor)
+                echo "<td style='text-align:center;'>";
+                echo number_format($skor, 4) . "<br>";
+                echo "<span style='color:green; font-size:10px;'>(" . number_format($hasilKali, 4) . ")</span>";
+                echo "</td>";
+            }
+            
+            // Total Akhir
+            echo "<td style='background: #ffeb3b; font-weight:bold; text-align:right;'>" . number_format($totalSkor, 4) . "</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
     }
 }

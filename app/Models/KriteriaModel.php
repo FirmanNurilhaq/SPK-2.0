@@ -5,5 +5,6 @@ use CodeIgniter\Model;
 class KriteriaModel extends Model {
     protected $table = 'kriteria';
     protected $primaryKey = 'id_kriteria';
-    protected $allowedFields = ['kode', 'nama'];
+    // TAMBAHKAN 'bobot_global' DISINI:
+    protected $allowedFields = ['kode', 'nama', 'bobot_global']; 
 }

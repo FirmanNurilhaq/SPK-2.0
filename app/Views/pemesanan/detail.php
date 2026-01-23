@@ -22,7 +22,7 @@
         <div class="p-6 grid grid-cols-2 gap-4 border-b">
             <div>
                 <p class="text-gray-500 text-sm">Bahan Baku</p>
-                <p class="font-bold text-lg"><?= $pesanan['bahan_baku'] ?></p>
+                <p class="font-bold text-lg"><?= $pesanan['nama_bahan'] ?></p>
             </div>
             <div>
                 <p class="text-gray-500 text-sm">Jumlah</p>
@@ -51,11 +51,11 @@
                 </thead>
                 <tbody>
                     <?php foreach ($history as $h): ?>
-                    <tr class="<?= ($h['id_supplier'] == $pesanan['id_supplier_terpilih']) ? 'bg-indigo-50 border-l-4 border-indigo-500' : '' ?>">
+                    <tr class="<?= ($h['id_supplier'] == $pesanan['id_supplier']) ? 'bg-indigo-50 border-l-4 border-indigo-500' : '' ?>">
                         <td class="py-2 px-4 font-bold">#<?= $h['ranking'] ?></td>
                         <td class="py-2 px-4">
                             <?= $h['nama_supplier'] ?>
-                            <?php if($h['id_supplier'] == $pesanan['id_supplier_terpilih']): ?>
+                            <?php if($h['id_supplier'] == $pesanan['id_supplier']): ?>
                                 <span class="ml-2 text-xs bg-indigo-600 text-white px-2 py-0.5 rounded">Dipilih</span>
                             <?php endif; ?>
                         </td>

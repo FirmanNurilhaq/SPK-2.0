@@ -5,7 +5,8 @@ use CodeIgniter\Model;
 class SubKriteriaModel extends Model {
     protected $table = 'sub_kriteria';
     protected $primaryKey = 'id_sub_kriteria';
-    protected $allowedFields = ['id_kriteria', 'kode', 'nama'];
+    // TAMBAHKAN 'bobot_lokal' DAN 'bobot_global' DISINI:
+    protected $allowedFields = ['id_kriteria', 'kode', 'nama', 'bobot_lokal', 'bobot_global'];
 
     // Helper untuk ambil sub beserta nama parent-nya
     public function getSubLengkap() {

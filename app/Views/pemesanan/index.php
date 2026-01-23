@@ -26,7 +26,7 @@
                 </td>
                 <td class="px-6 py-4">
                     <div class="text-sm font-medium text-gray-900"><?= $h['jumlah_lusin'] ?> Lusin</div>
-                    <div class="text-sm text-gray-500"><?= $h['bahan_baku'] ?></div>
+                    <div class="text-sm text-gray-500"><?= $h['nama_bahan'] ?></div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-900 font-semibold">
                     <?= $h['nama_supplier'] ?>

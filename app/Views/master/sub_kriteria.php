@@ -1,9 +1,15 @@
 <?= $this->extend('layout/main') ?>
 <?= $this->section('content') ?>
 
-<div class="mb-6">
-    <a href="<?= base_url('master/kriteria') ?>" class="text-gray-500 hover:text-indigo-600 font-bold"><i class="fa-solid fa-arrow-left"></i> Kembali ke Kriteria</a>
-    <h1 class="text-2xl font-bold text-gray-800 mt-2">Sub Kriteria: <span class="text-indigo-600"><?= $parent['nama'] ?></span></h1>
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <a href="<?= base_url('master/kriteria') ?>" class="text-gray-500 hover:text-indigo-600 font-bold"><i class="fa-solid fa-arrow-left"></i> Kembali ke Kriteria</a>
+        <h1 class="text-2xl font-bold text-gray-800 mt-2">Sub Kriteria: <span class="text-indigo-600"><?= $parent['nama'] ?></span></h1>
+    </div>
+    
+    <a href="<?= base_url('master/sub/prioritas/' . $parent['id_kriteria']) ?>" class="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 font-bold">
+        <i class="fa-solid fa-calculator mr-2"></i> Hitung Bobot Sub
+    </a>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

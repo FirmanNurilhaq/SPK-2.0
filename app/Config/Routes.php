@@ -9,49 +9,48 @@ use CodeIgniter\Router\RouteCollection;
 $routes->get('/', 'Home::index');
 
 // ==========================================================
-// 1. MASTER DATA (Kriteria, Sub Kriteria, Supplier)
-// Hanya input nama/kode, tanpa bobot.
+// 1. MASTER DATA & BOBOT GLOBAL
+// CRUD Data + Pembobotan Kriteria & Sub (Sekali Input)
 // ==========================================================
 $routes->group('master', function($routes) {
-    // Kriteria
+    // --- Kriteria ---
     $routes->get('kriteria', 'MasterController::kriteria');
     $routes->post('kriteria/store', 'MasterController::storeKriteria');
     $routes->get('kriteria/delete/(:num)', 'MasterController::deleteKriteria/$1');
     
-    // Sub Kriteria
-    $routes->get('sub/(:num)', 'MasterController::subKriteria/$1'); // parameter id_kriteria
+    // Fitur Baru: Hitung Bobot Global Kriteria
+    $routes->get('kriteria/prioritas', 'MasterController::prioritasKriteria'); 
+    $routes->post('kriteria/save-prioritas', 'MasterController::savePrioritasKriteria');
+
+    // --- Sub Kriteria ---
+    $routes->get('sub/(:num)', 'MasterController::subKriteria/$1');
     $routes->post('sub/store', 'MasterController::storeSub');
     $routes->get('sub/delete/(:num)', 'MasterController::deleteSub/$1');
 
-    // Supplier
+    // Fitur Baru: Hitung Bobot Global Sub Kriteria
+    $routes->get('sub/prioritas/(:num)', 'MasterController::prioritasSub/$1');
+    $routes->post('sub/save-prioritas', 'MasterController::savePrioritasSub');
+
+    // --- Supplier ---
     $routes->get('supplier', 'MasterController::supplier');
     $routes->post('supplier/store', 'MasterController::storeSupplier');
     $routes->get('supplier/delete/(:num)', 'MasterController::deleteSupplier/$1');
 });
 
 // ==========================================================
-// 2. JENIS BAHAN & SETUP AHP (INTI SISTEM)
-// Di sini user input Bahan & Melakukan Pembobotan per Bahan
+// 2. JENIS BAHAN & PENILAIAN SUPPLIER (DINAMIS)
+// User memilih bahan, lalu menilai supplier KHUSUS bahan itu.
 // ==========================================================
 $routes->group('jenis-bahan', function($routes) {
-    $routes->get('/', 'JenisBahanController::index');           // List Jenis Bahan
-    $routes->post('store', 'JenisBahanController::store');      // Tambah Bahan Baru
+    $routes->get('/', 'JenisBahanController::index');
+    $routes->post('store', 'JenisBahanController::store');
     $routes->get('delete/(:num)', 'JenisBahanController::delete/$1');
 
-    // --- MENU SETUP AHP PER BAHAN ---
-    // Dashboard Setup untuk 1 Bahan Tertentu
+    // Dashboard Setup untuk 1 Bahan
     $routes->get('setup/(:num)', 'JenisBahanController::setup/$1'); 
 
-    // A. Setup Bobot Kriteria (Khusus Bahan ini)
-    $routes->get('setup-kriteria/(:num)', 'JenisBahanController::setupKriteria/$1');
-    $routes->post('save-kriteria', 'JenisBahanController::saveKriteria');
-
-    // B. Setup Bobot Sub Kriteria (Khusus Bahan ini)
-    $routes->get('setup-sub/(:num)/(:num)', 'JenisBahanController::setupSub/$1/$2'); // id_bahan, id_kriteria_parent
-    $routes->post('save-sub', 'JenisBahanController::saveSub');
-
-    // C. Setup Nilai Supplier (Khusus Bahan ini)
-    $routes->get('setup-supplier/(:num)/(:num)', 'JenisBahanController::setupSupplier/$1/$2'); // id_bahan, id_sub_kriteria
+    // HANYA ADA SETUP SUPPLIER (Kriteria & Sub ikut Master)
+    $routes->get('setup-supplier/(:num)/(:num)', 'JenisBahanController::setupSupplier/$1/$2'); // id_bahan, id_sub
     $routes->post('save-supplier', 'JenisBahanController::saveSupplier');
 });
 
@@ -63,7 +62,6 @@ $routes->group('pemesanan', function($routes) {
     $routes->get('create', 'PemesananController::create');
     $routes->post('store', 'PemesananController::store');
     $routes->get('detail/(:num)', 'PemesananController::detail/$1');
-
-    // API untuk mengambil leaderboard saat dropdown bahan dipilih
-    $routes->get('get-leaderboard/(:num)', 'PemesananController::getLeaderboard/$1'); // id_jenis_bahan
+    $routes->get('get-leaderboard/(:num)', 'PemesananController::getLeaderboard/$1');
+    $routes->get('debug/(:num)', 'PemesananController::debug/$1'); // <--- Tambah ini
 });
