@@ -34,8 +34,8 @@
                 <th class="p-4 font-semibold text-gray-600 text-sm">Tanggal</th>
                 <th class="p-4 font-semibold text-gray-600 text-sm">Pembeli</th>
                 <th class="p-4 font-semibold text-gray-600 text-sm">Detail Barang</th>
+                <th class="p-4 font-semibold text-gray-600 text-sm">Detail Barang</th>
                 <th class="p-4 font-semibold text-gray-600 text-sm">Status</th>
-                <th class="p-4 font-semibold text-gray-600 text-sm">Supplier Terpilih</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
@@ -56,13 +56,8 @@
                     </td>
                     <td class="p-4">
                         <div class="font-semibold text-indigo-600"><?= $h['nama_barang'] ?></div>
-                        <div class="text-sm text-gray-600">
-                            Bahan: <?= $h['nama_bahan'] ?><br>
-                            Qty: <?= $h['jumlah_lusin'] ?> Lusin (<?= $h['total_berat'] ?> Kg)
-                        </div>
                     </td>
                     <td class="p-4">
-                        <div class="font-semibold text-indigo-600"><?= $h['nama_barang'] ?></div>
                         <div class="text-sm text-gray-600">
                             Bahan: <?= $h['nama_bahan'] ?><br>
                             Qty: <?= $h['jumlah_lusin'] ?> Lusin (<?= $h['total_berat'] ?> Kg)
