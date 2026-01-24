@@ -25,16 +25,9 @@
                     
                     <?php elseif(session()->get('role') == 'pengadaan'): ?>
                         <a href="<?= base_url('pengadaan') ?>" class="py-4 px-2 font-semibold hover:text-indigo-500 text-gray-500">Order Masuk (Pending)</a>
-                        <div class="relative group">
-                            <button class="py-4 px-2 text-gray-500 font-semibold hover:text-indigo-500 flex items-center">
-                                Master Data <i class="fa-solid fa-chevron-down ml-1 text-xs"></i>
-                            </button>
-                            <div class="absolute hidden group-hover:block bg-white shadow-lg rounded mt-0 w-48 z-10 border">
-                                <a href="<?= base_url('master/kriteria') ?>" class="block px-4 py-2 text-gray-700 hover:bg-indigo-50">Kriteria AHP</a>
-                                <a href="<?= base_url('master/supplier') ?>" class="block px-4 py-2 text-gray-700 hover:bg-indigo-50">Data Supplier</a>
-                                <a href="<?= base_url('jenis-bahan') ?>" class="block px-4 py-2 text-gray-700 hover:bg-indigo-50">Jenis Bahan & Penilaian</a>
-                            </div>
-                        </div>
+                        <a href="<?= base_url('master/kriteria') ?>" class="py-4 px-2 font-semibold hover:text-indigo-500 text-gray-500">Kriteria AHP</a>
+                        <a href="<?= base_url('master/supplier') ?>" class="py-4 px-2 font-semibold hover:text-indigo-500 text-gray-500">Data Supplier</a>
+                        <a href="<?= base_url('jenis-bahan') ?>" class="py-4 px-2 font-semibold hover:text-indigo-500 text-gray-500">Jenis Bahan & Penilaian</a>
                     <?php endif; ?>
 
                 </div>

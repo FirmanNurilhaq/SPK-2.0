@@ -62,15 +62,15 @@
                         </div>
                     </td>
                     <td class="p-4">
-    <div class="font-semibold text-indigo-600"><?= $h['nama_barang'] ?></div>
-    <div class="text-sm text-gray-600">
-        Bahan: <?= $h['nama_bahan'] ?><br>
-        Qty: <?= $h['jumlah_lusin'] ?> Lusin (<?= $h['total_berat'] ?> Kg)
-    </div>
-    <div class="mt-1 font-bold text-gray-800 bg-gray-100 inline-block px-2 rounded text-xs">
-        Total: Rp <?= number_format($h['total_harga'], 0, ',', '.') ?>
-    </div>
-</td>
+                        <div class="font-semibold text-indigo-600"><?= $h['nama_barang'] ?></div>
+                        <div class="text-sm text-gray-600">
+                            Bahan: <?= $h['nama_bahan'] ?><br>
+                            Qty: <?= $h['jumlah_lusin'] ?> Lusin (<?= $h['total_berat'] ?> Kg)
+                        </div>
+                        <div class="mt-1 font-bold text-gray-800 bg-gray-100 inline-block px-2 rounded text-xs">
+                            Total: Rp <?= number_format($h['total_harga'], 0, ',', '.') ?>
+                        </div>
+                    </td>
                     <td class="p-4">
                         <?php if($h['status'] == 'pending'): ?>
                             <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold">
@@ -80,13 +80,6 @@
                             <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">
                                 <i class="fa-solid fa-check mr-1"></i> Selesai
                             </span>
-                        <?php endif; ?>
-                    </td>
-                    <td class="p-4 text-sm">
-                        <?php if($h['id_supplier']): ?>
-                            <div class="font-bold text-gray-800"><?= $h['nama_supplier'] ?></div>
-                        <?php else: ?>
-                            <span class="text-gray-400 italic">Menunggu Pengadaan...</span>
                         <?php endif; ?>
                     </td>
                 </tr>
